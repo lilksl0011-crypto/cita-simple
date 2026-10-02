@@ -16,7 +16,8 @@ Una sola fuente de verdad: **un único proyecto Supabase** (PostgreSQL + Auth + 
 |---|---|
 | Capacidad > 1 | Exclusion constraint no modela capacidad N. Se usa RPC con **advisory lock transaccional por taller** + recuento de solapes en la misma transacción. |
 | Clave del lock | `pg_advisory_xact_lock(bigint)` con clave = primeros 8 bytes del UUID del taller interpretados como bigint (`('x' || substr(replace(id::text,'-',''),1,16))::bit(64)::bigint`). Determinista, 64 bits, sin hash pequeño. Serializa **solo** operaciones concurrentes del mismo taller (crear, reprogramar, confirmar solicitud, aceptar propuesta); talleres distintos no se bloquean. Se libera al terminar la transacción. |
-| Buffer | Ocupación = `[start_at, occupied_until)` con `occupied_until = start + duración + buffer`. `end_at` = lo que ve el cliente. Solo la duración debe caber antes del cierre. |
+| Buffer | Ocupación = `[start_at, occupied_until)` con `occupied_until = start + duración + buffer`. `end_at` = lo que ve el cliente. **Duración + buffer deben caber completos dentro del intervalo de apertura** (cierre 19:00, 60+15 → última cita 17:45). |
+| Generación de slots | Inicios desde el **inicio real de cada intervalo de apertura local** (08:15–13:00, cada 30 → 08:15, 08:45…), no alineados a medianoche. Conversión con la zona del taller → `timestamptz`. |
 | Estados | `pending, confirmed, declined, expired, cancelled, completed, no_show`. **Sin `rescheduled` como estado.** |
 | Reprogramación | Misma fila, sigue `confirmed`; se actualizan start/end/occupied en una transacción con lock + revalidación excluyendo la propia reserva. Si falla, la cita original queda intacta. Evento `rescheduled` con `previous_start_at, previous_end_at, new_start_at, new_end_at, actor_type, actor_id`. |
 | Solicitudes pending | No consumen capacidad. Al confirmar una solicitud (o una reserva instantánea), la RPC detecta otras `pending` del taller que **ya no caben** y las marca `needs_attention = true` + evento `availability_conflict`. El panel las destaca: "Este horario ya no está disponible" con acciones **Proponer otra hora** / **Rechazar**. Nunca quedan silenciosamente pendientes. |
@@ -68,6 +69,11 @@ terminales: declined, expired, cancelled, completed, no_show
 ```
 Trigger `BEFORE UPDATE` con tabla de transiciones permitidas. Sin UPDATE/INSERT directos por RLS: solo RPC.
 
+Reglas explícitas:
+- No se puede cancelar ni reprogramar si `start_at <= now()`.
+- Cancelación del cliente solo si `now() < start_at - cancellation_window_minutes` (MVP: 0).
+- `cancelled` no se reactiva por ninguna operación normal; `completed, no_show, declined, expired` permanecen terminales.
+
 ## 6. Reglas para toda función SECURITY DEFINER
 
 Cada función:
@@ -85,23 +91,35 @@ RLS se mantiene como segunda capa, no como única protección.
 `is_slot_bookable(workshop, service, start, exclude_booking)` es la única regla, usada tanto por `get_availability` (UI) como por las RPC de escritura. Descarta: pasado, < lead time, > horizonte, taller/servicio inactivo, día cerrado, `blocked_times`, duración fuera de apertura, y `count(confirmed solapados en [start, occupied_until)) >= capacity`.
 
 `create_booking` (una transacción):
-1. Si existe `idempotency_key` → devuelve la misma reserva (sin token nuevo en claro; la UI conserva el que recibió).
-2. Lock del taller.
-3. Relee taller/servicio actuales → snapshots.
-4. `is_slot_bookable` (capacidad validada dentro de la transacción).
-5. Inserta (`confirmed` si instant, `pending` + deadline si request), evento, notificaciones en cola, marca pending incompatibles, devuelve token.
-Errores tipados: `SLOT_TAKEN, SERVICE_INACTIVE, WORKSHOP_CLOSED, OUT_OF_HOURS, TOO_SOON, TOO_FAR, INVALID_INPUT`.
+1. Recibe `idempotency_key` (UUID generado por el navegador por intento) y `token_hash` (ver §9).
+2. Adquiere el lock del taller.
+3. **Comprueba `idempotency_key` después del lock**; si existe → devuelve la reserva existente (nunca un token nuevo).
+4. Relee taller/servicio actuales → snapshots.
+5. `is_slot_bookable` (capacidad validada dentro de la transacción).
+6. Inserta (`confirmed` si instant, `pending` + deadline si request), evento, notificaciones en cola, marca pending incompatibles.
+7. Si el `INSERT` choca con el unique de `idempotency_key` (`unique_violation`), se captura y se devuelve la reserva existente.
+Errores tipados: `SLOT_TAKEN, SERVICE_INACTIVE, WORKSHOP_CLOSED, OUT_OF_HOURS, TOO_SOON, TOO_FAR, INVALID_INPUT, RATE_LIMITED`.
+
+### Flujo guest
+
+```text
+navegador → server function (Zod + rate limiting) → RPC PostgreSQL → resultado
+```
+La server function **no decide** disponibilidad; la RPC es la autoridad para disponibilidad, capacidad, double-booking, estados e integridad.
+
+Rate limiting básico (pedido explícitamente; no hay primitiva estándar, se implementa a medida): tabla `rate_limit_hits(key_hash, bucket_start, count)` con clave = SHA-256(IP + sal) y, por separado, SHA-256(email). Límites iniciales: 10 creaciones/hora por IP, 5/hora por email, 60 consultas de token/hora por IP. **Nunca se guarda la IP en claro**; las filas se borran a las 24 h (pg_cron).
 
 ## 8. Auth y RLS
 
 - Email/contraseña para talleres y admin; roles en `user_roles`.
 - Catálogo (talleres activos, servicios activos, horarios, cierres): lectura pública con columnas seguras; escritura solo owner/admin.
 - `bookings, booking_events, notifications, vehicles`: SELECT solo owner del taller o admin; escritura solo vía RPC.
+- `rate_limit_hits`: sin acceso para anon/authenticated; solo server.
 - Guest: sin acceso RLS; solo `get_booking_by_token`.
 
 ## 9. Token de gestión
 
-32 bytes aleatorios (base64url); en BD solo SHA-256. Caduca a los **30 días tras `end_at`** (o tras la creación si nunca se confirma).
+El **navegador genera** el token (32 bytes con `crypto.getRandomValues`, base64url) y la `idempotency_key` antes de enviar, y los conserva en memoria/estado del flujo (y `sessionStorage` durante el intento, para sobrevivir a un refresco). Se envía el token y el servidor guarda solo SHA-256(token). Si la respuesta se pierde, el reintento con la misma `idempotency_key` recupera la misma reserva y el navegador ya tiene el token correcto. El servidor nunca genera ni devuelve tokens en claro; una `idempotency_key` mapea a una sola reserva. Caduca a los **30 días tras `end_at`** (o tras la creación si nunca se confirma).
 - Antes de la cita y estado activo: consultar, cancelar, reprogramar, aceptar/rechazar propuesta.
 - Estado terminal o cita pasada: **solo lectura** hasta caducar.
 - La URL no contiene datos personales; la respuesta solo devuelve esa cita.
@@ -132,6 +150,17 @@ Fechas: hoy, mañana, fin de mes/año, DST marzo/octubre, día cerrado, cierre p
 3. **Lock por taller**: serializa reservas del mismo taller; aceptable con volumen MVP, a revisar con talleres de alto tráfico.
 4. **Pending no bloquea**: dos clientes pueden solicitar la misma hora; se mitiga con `needs_attention`, pero el taller debe actuar.
 5. **Token en URL**: quien tenga el enlace gestiona la cita (riesgo de reenvío/historial); mitigado con caducidad y solo lectura en terminales.
-6. **Sin verificación de email/teléfono** del guest: posibles reservas falsas; sin rate limiting avanzado en MVP (solo límite básico por IP/email en la RPC).
+6. **Sin verificación de email/teléfono** del guest: posibles reservas falsas; el rate limiting básico (IP hasheada + email) frena abuso simple, no ataques distribuidos.
 7. **DST**: horas inexistentes/duplicadas (02:00–03:00) se resuelven con `AT TIME ZONE`; probado, pero talleres no abren a esas horas en la práctica.
 8. **IA**: clasificación puede fallar; siempre cae a `other` y el usuario elige manualmente.
+9. **Token generado en navegador**: depende de `crypto.getRandomValues` (disponible en todos los navegadores soportados); si el usuario cierra la pestaña antes de ver la confirmación y no hay email, pierde el enlace (el taller conserva la cita).
+10. **Rate limit a medida**: no es una primitiva estándar de la plataforma; contadores en BD añaden una escritura por petición.
+
+## 14. Coherencia entre capas
+
+Revisado sin contradicciones conocidas:
+- **Frontend**: solo muestra disponibilidad (`get_availability`) y genera token + `idempotency_key`; nunca decide validez.
+- **Server functions**: validan formato y rate limiting; no deciden disponibilidad; no usan service role para reservas.
+- **RPC**: única autoridad de disponibilidad, capacidad, estados, ventanas de cancelación/reprogramación e idempotencia; misma `is_slot_bookable` para lectura y escritura.
+- **RLS**: segunda capa; sin escrituras directas en tablas de reservas.
+- **Modelo**: 7 estados (sin `rescheduled`), snapshots incluyen buffer, `occupied_until` coherente con la regla "duración + buffer dentro de apertura".
