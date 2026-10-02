@@ -151,7 +151,16 @@ Fechas: hoy, mañana, fin de mes/año, DST marzo/octubre, día cerrado, cierre p
 4. **Pending no bloquea**: dos clientes pueden solicitar la misma hora; se mitiga con `needs_attention`, pero el taller debe actuar.
 5. **Token en URL**: quien tenga el enlace gestiona la cita (riesgo de reenvío/historial); mitigado con caducidad y solo lectura en terminales.
 6. **Sin verificación de email/teléfono** del guest: posibles reservas falsas; el rate limiting básico (IP hasheada + email) frena abuso simple, no ataques distribuidos.
-9. **Token generado en navegador**: depende de `crypto.getRandomValues` (disponible en todos los navegadores soportados); si el usuario cierra la pestaña antes de ver la confirmación y no hay email, pierde el enlace (el taller conserva la cita).
-10. **Rate limit a medida**: no es una primitiva estándar de la plataforma; contadores en BD añaden una escritura por petición.
 7. **DST**: horas inexistentes/duplicadas (02:00–03:00) se resuelven con `AT TIME ZONE`; probado, pero talleres no abren a esas horas en la práctica.
 8. **IA**: clasificación puede fallar; siempre cae a `other` y el usuario elige manualmente.
+9. **Token generado en navegador**: depende de `crypto.getRandomValues` (disponible en todos los navegadores soportados); si el usuario cierra la pestaña antes de ver la confirmación y no hay email, pierde el enlace (el taller conserva la cita).
+10. **Rate limit a medida**: no es una primitiva estándar de la plataforma; contadores en BD añaden una escritura por petición.
+
+## 14. Coherencia entre capas
+
+Revisado sin contradicciones conocidas:
+- **Frontend**: solo muestra disponibilidad (`get_availability`) y genera token + `idempotency_key`; nunca decide validez.
+- **Server functions**: validan formato y rate limiting; no deciden disponibilidad; no usan service role para reservas.
+- **RPC**: única autoridad de disponibilidad, capacidad, estados, ventanas de cancelación/reprogramación e idempotencia; misma `is_slot_bookable` para lectura y escritura.
+- **RLS**: segunda capa; sin escrituras directas en tablas de reservas.
+- **Modelo**: 7 estados (sin `rescheduled`), snapshots incluyen buffer, `occupied_until` coherente con la regla "duración + buffer dentro de apertura".
