@@ -1,127 +1,137 @@
-# CitaMotor — Plan técnico (Fase 0)
+# CitaMotor — Plan técnico (Fase 0, v2)
 
 Objetivo: MVP pequeño y correcto. Reservas fiables > número de funciones.
 
-## 1. Decisiones y contradicciones resueltas
+## 1. Backend único
+
+Una sola fuente de verdad: **un único proyecto Supabase** (PostgreSQL + Auth + RLS + RPC), aprovisionado y gestionado por Lovable Cloud. Lovable Cloud no es una infraestructura distinta: es el mismo proyecto Supabase. No se conectará ningún otro proyecto Supabase.
+
+- Lógica crítica (reservas, transiciones, tokens, disponibilidad): **funciones SQL/RPC** en PostgreSQL.
+- Lógica con secretos (email, IA): **server functions** del framework (TanStack Start) que llaman a esas RPC. No se usan Edge Functions separadas: mismo aislamiento de secretos, un solo despliegue.
+- Ningún secreto ni service role key en el navegador.
+
+## 2. Decisiones resueltas
 
 | Tema | Decisión MVP |
 |---|---|
-| "Edge Functions" | El proyecto usa TanStack Start: la lógica sensible va en **server functions** + **funciones SQL (RPC) SECURITY DEFINER**. Mismo aislamiento de secretos. |
-| Capacidad > 1 | No sirve un exclusion constraint simple (solo modela capacidad 1). Se usa **RPC con bloqueo por taller** (`pg_advisory_xact_lock(workshop)` + `SELECT ... FOR UPDATE` del taller) y recuento de solapes dentro de la transacción. |
-| Buffer | Ocupación = `[start_at, start_at + duración + buffer)`. Se guarda `occupied_until` aparte de `end_at` (lo que ve el cliente). El buffer debe caber antes del cierre: **no** (solo la duración debe caber; el buffer puede salir del horario). |
-| Estado `rescheduled` | La reprogramación **mueve la misma reserva** (actualiza start/end en una transacción) y registra evento `rescheduled` con hora anterior. El estado `rescheduled` se reserva para propuestas del taller sobre solicitudes; la cita sigue `confirmed`. Evita duplicar filas y huecos. |
-| Solicitudes (`request`) | Una solicitud `pending` **no ocupa capacidad** (no bloquea a otros). Al confirmarla, la RPC revalida capacidad; si ya no cabe, el taller debe proponer otra hora. |
-| Proponer otra hora | Taller propone → reserva queda `pending` con `proposed_start_at`; el cliente acepta desde su enlace (RPC atómica) o rechaza. |
-| Expiración | Sin cron externo obligatorio: `pg_cron` cada 5 min marca `pending → expired` si `response_deadline_at < now()`. Las lecturas también lo tratan como expirado. |
-| Deadline inteligente | SLA en **minutos laborables** (por defecto 120) contados solo dentro de los intervalos de apertura, saltando cierres. Calculado en SQL. Se muestra "Respuesta antes de: lun 08:00–10:00". |
-| Recordatorios 48h/24h | Se crean como filas `notifications` con `scheduled_for`; un job las envía. Si no hay dominio de email configurado, quedan `queued` / `failed` registradas (cumple "registrados"). |
-| Email | Lovable Emails (requiere dominio). Si no está listo, la reserva funciona igual. |
-| IA | Lovable AI Gateway, salida por tool-calling con enum cerrado + validación Zod; fallback `other`. Solo sugiere servicio; nunca reserva. |
-| Cuenta de cliente | MVP: solo guest con enlace mágico. Rol `customer` existe en el modelo, sin pantallas propias (fuera de "mínimo"). |
-| Zona horaria | Cada taller tiene `timezone` (default `Europe/Madrid`). Horarios semanales en `time` local; conversión a `timestamptz` en SQL con `AT TIME ZONE`, lo que resuelve DST. |
+| Capacidad > 1 | Exclusion constraint no modela capacidad N. Se usa RPC con **advisory lock transaccional por taller** + recuento de solapes en la misma transacción. |
+| Clave del lock | `pg_advisory_xact_lock(bigint)` con clave = primeros 8 bytes del UUID del taller interpretados como bigint (`('x' || substr(replace(id::text,'-',''),1,16))::bit(64)::bigint`). Determinista, 64 bits, sin hash pequeño. Serializa **solo** operaciones concurrentes del mismo taller (crear, reprogramar, confirmar solicitud, aceptar propuesta); talleres distintos no se bloquean. Se libera al terminar la transacción. |
+| Buffer | Ocupación = `[start_at, occupied_until)` con `occupied_until = start + duración + buffer`. `end_at` = lo que ve el cliente. Solo la duración debe caber antes del cierre. |
+| Estados | `pending, confirmed, declined, expired, cancelled, completed, no_show`. **Sin `rescheduled` como estado.** |
+| Reprogramación | Misma fila, sigue `confirmed`; se actualizan start/end/occupied en una transacción con lock + revalidación excluyendo la propia reserva. Si falla, la cita original queda intacta. Evento `rescheduled` con `previous_start_at, previous_end_at, new_start_at, new_end_at, actor_type, actor_id`. |
+| Solicitudes pending | No consumen capacidad. Al confirmar una solicitud (o una reserva instantánea), la RPC detecta otras `pending` del taller que **ya no caben** y las marca `needs_attention = true` + evento `availability_conflict`. El panel las destaca: "Este horario ya no está disponible" con acciones **Proponer otra hora** / **Rechazar**. Nunca quedan silenciosamente pendientes. |
+| Propuesta del taller | Reserva sigue `pending` con `proposed_start_at`; el cliente acepta desde su enlace (RPC atómica con lock + revalidación) o rechaza. |
+| Expiración | `pg_cron` cada 5 min: `pending → expired` si `response_deadline_at < now()`; las lecturas también lo consideran. |
+| Deadline | SLA en minutos laborables (defecto 120) contados solo dentro de intervalos de apertura, en la zona horaria del taller, saltando `workshop_closures` y `blocked_times`. Calculado en SQL. Nunca se promete respuesta en periodo cerrado; UI: "El taller responderá antes del lun 10:00". |
+| Email guest | **Email y teléfono obligatorios.** |
+| Sin proveedor de email | Nunca decir "Te hemos enviado…". Se muestra confirmación en pantalla, el enlace de gestión **una sola vez** (copiar), y la notificación queda `queued`/`failed` registrada. |
+| IA | Lovable AI Gateway, salida con enum cerrado + validación Zod; fallback `other`. Solo sugiere servicio; nunca reserva. |
+| Cuenta cliente | MVP: guest con enlace. Rol `customer` existe en el modelo, sin pantallas propias. |
+| Zona horaria | `workshops.timezone` (defecto `Europe/Madrid`). Horarios en `time` local; conversión con `AT TIME ZONE` (resuelve DST). Todo lo persistido de reservas es `timestamptz`. |
 
-## 2. Rutas
+## 3. Rutas
 
 ```text
 Público
-/                         Home + servicios
-/reservar                 ?servicio= → lista talleres
-/taller/$slug             Página pública + flujo de reserva
-/cita/$token              Gestionar cita (ver/cancelar/reprogramar/aceptar propuesta)
-/auth                     Login / registro taller
-Taller (_authenticated, noindex)
-/panel                    Inicio (hoy, pendientes, próximas, cancelaciones)
-/panel/onboarding         5 pasos con guardado
-/panel/calendario         Día / semana
-/panel/citas              Lista + acciones
+/                     Home + servicios
+/reservar             ?servicio= → talleres
+/taller/$slug         Página pública + flujo de reserva
+/cita/$token          Gestionar cita
+/auth                 Login / registro taller
+Taller (protegido, noindex)
+/panel  /panel/onboarding  /panel/calendario  /panel/citas
 /panel/servicios  /panel/horario  /panel/clientes  /panel/ajustes
-Admin (_authenticated + rol admin, noindex)
-/admin                    Talleres, reservas, notificaciones, incidencias, stats
+Admin (protegido + rol admin, noindex)
+/admin
 ```
 
-## 3. Modelo de datos (resumen)
+## 4. Modelo de datos
 
 - `profiles(id→auth.users, full_name, phone)`
-- `user_roles(user_id, role app_role[admin|workshop|customer])` + `has_role()`
-- `workshops(id, owner_id→profiles, slug unique, name, description, phone, email, address, city, postal_code, region, country, timezone, capacity_per_slot, slot_interval_minutes[15|30|60], min_lead_time_minutes=60, max_booking_horizon_days=30, cancellation_window_minutes=0, request_sla_minutes=120, active, is_demo)`
-- `services(id, workshop_id, category enum, name, description, price_type, price_from, duration_minutes, buffer_minutes, booking_mode, active, deleted_at)` — check: instant ⇒ duración > 0. Borrado = soft delete.
-- `workshop_hours(workshop_id, weekday 1-7, opens time, closes time)` — check opens<closes, varias filas por día.
-- `workshop_closures(workshop_id, date, reason)` día completo.
-- `blocked_times(workshop_id, during tstzrange, reason)` cierres parciales.
+- `user_roles(user_id, role[admin|workshop|customer])` + `has_role()`
+- `workshops(id, owner_id→profiles, slug unique, name, description, phone, email, address, city, postal_code, region, country, timezone, capacity_per_slot, slot_interval_minutes∈{15,30,60}, min_lead_time_minutes=60, max_booking_horizon_days=30, cancellation_window_minutes=0, request_sla_minutes=120, active, is_demo)`
+- `services(id, workshop_id, category, name, description, price_type, price_from, duration_minutes, buffer_minutes, booking_mode, active, deleted_at)` — check instant ⇒ duración > 0; borrado = soft delete.
+- `workshop_hours(workshop_id, weekday 1–7, opens, closes)` varias filas por día.
+- `workshop_closures(workshop_id, date, reason)`; `blocked_times(workshop_id, during tstzrange, reason)`.
 - `vehicles(id, customer_id null, plate, make, model)`
-- `bookings(id, workshop_id, service_id, customer_id null, vehicle_id null, status, start_at, end_at, occupied_until, proposed_start_at, response_deadline_at, customer_name, customer_phone, customer_email, notes, snapshots: service_name/duration/buffer/price/price_type, idempotency_key unique, manage_token_hash, manage_token_expires_at, created_at)`
-  - Índice GiST en `(workshop_id, tstzrange(start_at, occupied_until))` filtrado por estados que ocupan.
+- `bookings(id, workshop_id, service_id, customer_id null, vehicle_id null, status, start_at, end_at, occupied_until, proposed_start_at, response_deadline_at, needs_attention, customer_name, customer_phone, customer_email, notes, service_name_snapshot, duration_snapshot_minutes, buffer_snapshot_minutes, price_snapshot, price_type_snapshot, idempotency_key unique, manage_token_hash, manage_token_expires_at, created_at)` + índice GiST `(workshop_id, tstzrange(start_at, occupied_until))` para `confirmed`.
 - `booking_events(id, booking_id, event_type, actor_type, actor_id, metadata jsonb, created_at)`
 - `notifications(id, booking_id, channel, template, recipient, status[queued|sent|failed|cancelled], scheduled_for, provider, provider_message_id, error_message, attempts, sent_at)`
-- `system_errors(id, source, code, message, context jsonb, created_at)` — observabilidad (sin secretos).
+- `system_errors(id, source, code, message, context jsonb, created_at)` sin secretos.
 
-Estados que ocupan capacidad: `confirmed`.
-
-## 4. Máquina de estados
+## 5. Máquina de estados
 
 ```text
-pending   → confirmed | declined | expired | cancelled(cliente)
-confirmed → cancelled | completed | no_show   (+ reprogramación = sigue confirmed)
-terminales: cancelled, declined, expired, completed, no_show
+pending   → confirmed | declined | expired | cancelled
+confirmed → cancelled | completed | no_show      (reprogramar = sigue confirmed)
+terminales: declined, expired, cancelled, completed, no_show
 ```
-Impuesta por trigger `BEFORE UPDATE` (tabla de transiciones permitidas) + evento automático. Las RPC son la única vía de escritura (sin UPDATE directo vía RLS).
+Trigger `BEFORE UPDATE` con tabla de transiciones permitidas. Sin UPDATE/INSERT directos por RLS: solo RPC.
 
-## 5. Disponibilidad
+## 6. Reglas para toda función SECURITY DEFINER
 
-`get_availability(workshop, service, date)` en SQL: genera inicios cada `slot_interval` dentro de cada intervalo de apertura (en tz del taller), descarta: pasado, < lead time, > horizonte, día cerrado, solape con `blocked_times`, duración que no cabe antes del cierre, y slots donde `count(confirmed solapados) >= capacity`. Devuelve `timestamptz`. Misma función de validación `is_slot_bookable()` reutilizada por la RPC de reserva → UI y backend nunca divergen.
+Cada función:
+1. `SET search_path = public, pg_temp` y referencias cualificadas.
+2. Identifica al llamante con `auth.uid()` (o token guest hasheado); nunca acepta un user_id del cliente.
+3. Deriva el taller **desde la fila** (booking → workshop, service → workshop), no del parámetro, y comprueba que el servicio pertenece al taller.
+4. Valida ownership (`workshops.owner_id = auth.uid()`) o `has_role(admin)` en acciones de taller; en acciones guest, que el hash del token coincide, no ha caducado y la acción está permitida para el estado.
+5. Valida todos los parámetros (rangos, longitudes, formato email/teléfono, estados).
+6. Lleva un comentario `COMMENT ON FUNCTION` documentando sus controles de autorización.
+7. `REVOKE EXECUTE FROM PUBLIC` y `GRANT` solo a los roles necesarios.
+RLS se mantiene como segunda capa, no como única protección.
 
-## 6. Anti double-booking
+## 7. Disponibilidad y anti double-booking
 
-`create_booking(...)` (SECURITY DEFINER, una transacción):
-1. Si existe `idempotency_key` → devuelve la reserva existente.
-2. `pg_advisory_xact_lock(hash(workshop_id))` serializa reservas del mismo taller.
-3. Relee taller/servicio (activo, duración actual → snapshot).
-4. `is_slot_bookable()` con recuento de solapes `[start, occupied_until)`.
-5. Inserta, evento `created`, notificaciones en cola, genera token (devuelve token en claro una sola vez; guarda SHA-256).
-Errores tipados: `SLOT_TAKEN`, `SERVICE_INACTIVE`, `WORKSHOP_CLOSED`, `OUT_OF_HOURS`, `TOO_SOON`, `TOO_FAR` → UI muestra "Esa hora acaba de ocuparse." y recarga alternativas. Reprogramar y confirmar solicitud usan el mismo lock y validación excluyendo la propia reserva.
+`is_slot_bookable(workshop, service, start, exclude_booking)` es la única regla, usada tanto por `get_availability` (UI) como por las RPC de escritura. Descarta: pasado, < lead time, > horizonte, taller/servicio inactivo, día cerrado, `blocked_times`, duración fuera de apertura, y `count(confirmed solapados en [start, occupied_until)) >= capacity`.
 
-## 7. Auth y RLS
+`create_booking` (una transacción):
+1. Si existe `idempotency_key` → devuelve la misma reserva (sin token nuevo en claro; la UI conserva el que recibió).
+2. Lock del taller.
+3. Relee taller/servicio actuales → snapshots.
+4. `is_slot_bookable` (capacidad validada dentro de la transacción).
+5. Inserta (`confirmed` si instant, `pending` + deadline si request), evento, notificaciones en cola, marca pending incompatibles, devuelve token.
+Errores tipados: `SLOT_TAKEN, SERVICE_INACTIVE, WORKSHOP_CLOSED, OUT_OF_HOURS, TOO_SOON, TOO_FAR, INVALID_INPUT`.
 
-- Email/contraseña para talleres y admin. Rol en `user_roles`, nunca en cliente.
-- `workshops/services/hours/closures/blocked`: lectura pública solo si taller activo (vista pública sin email/teléfono privados si procede); escritura solo owner o admin.
-- `bookings/events/notifications/vehicles`: SELECT solo owner del taller o admin; sin INSERT/UPDATE directos (solo RPC).
-- Guest: ningún acceso por RLS; `get_booking_by_token(token)` compara hash y devuelve solo su cita.
+## 8. Auth y RLS
 
-## 8. Guest booking
+- Email/contraseña para talleres y admin; roles en `user_roles`.
+- Catálogo (talleres activos, servicios activos, horarios, cierres): lectura pública con columnas seguras; escritura solo owner/admin.
+- `bookings, booking_events, notifications, vehicles`: SELECT solo owner del taller o admin; escritura solo vía RPC.
+- Guest: sin acceso RLS; solo `get_booking_by_token`.
 
-Token 32 bytes aleatorios (base64url), hash SHA-256 en BD, caduca 7 días tras la cita, se invalida en estados terminales (solo lectura). URL `/cita/$token` no lleva datos personales.
+## 9. Token de gestión
 
-## 9. Casos límite cubiertos por tests
+32 bytes aleatorios (base64url); en BD solo SHA-256. Caduca a los **30 días tras `end_at`** (o tras la creación si nunca se confirma).
+- Antes de la cita y estado activo: consultar, cancelar, reprogramar, aceptar/rechazar propuesta.
+- Estado terminal o cita pasada: **solo lectura** hasta caducar.
+- La URL no contiene datos personales; la respuesta solo devuelve esa cita.
 
-hoy/mañana, fin de mes/año, DST (marzo/octubre en Madrid), día cerrado, cierre parcial, cita que acaba justo al cierre (válida), que lo supera (inválida), primera/última hora, fecha pasada, cambio de duración entre ver y confirmar, servicio desactivado, taller desactivado.
+## 10. UX crítica
 
-## 10. Plan de pruebas
+- Instantánea confirmada: **"✓ Cita confirmada"**.
+- Solicitud: **"Solicitud enviada"** + "El taller debe confirmar esta cita." + plazo honesto. Nunca "Cita reservada" para pending.
+- Slot ocupado al confirmar: "Esa hora acaba de ocuparse." + recarga automática de alternativas + datos del formulario preservados.
+- Errores siempre con acción (Siguiente día, Otra fecha, Solicitar cita, Reintentar).
 
-- **SQL (vía psql)**: disponibilidad, DST, solapes semiabiertos, transiciones, snapshots.
-- **Concurrencia**: N llamadas paralelas a `create_booking` (cap 1 → 1 OK; cap 2 → 2 OK, 3ª `SLOT_TAKEN`); misma idempotency key ×5 → 1 fila.
-- **RLS**: peticiones directas con JWT de Taller A contra datos de B; guest sin token; admin.
-- **E2E Playwright**: flujos A–Z del documento, en viewport móvil y escritorio.
+## 11. Casos límite y pruebas
 
-## 11. Fases
+Fechas: hoy, mañana, fin de mes/año, DST marzo/octubre, día cerrado, cierre parcial, fin exacto al cierre (válido), supera cierre (inválido), primera/última hora, pasado.
+- SQL: disponibilidad, DST, solapes semiabiertos, transiciones, snapshots, deadline.
+- Concurrencia: llamadas paralelas reales (cap 1 → 1 OK; cap 2 → 2 OK, 3ª `SLOT_TAKEN`); misma idempotency key ×5 → 1 fila.
+- RLS/multi-tenant: peticiones directas con JWT de Taller A contra B; guest sin token; admin.
+- E2E Playwright A–Z en móvil y escritorio.
 
-0. Plan (este documento).
-1. Sistema visual, home, routing, páginas públicas con datos estáticos.
-2. Lovable Cloud, auth, esquema completo, RLS, roles, datos DEMO (3 talleres).
-3. Onboarding taller, servicios, horario, cierres, ajustes.
-4. Motor de disponibilidad (SQL) + tests de fechas/DST.
-5. `create_booking` atómica + flujo de reserva + slot obsoleto + idempotencia + test de concurrencia.
-6. Panel: inicio, calendario día/semana, citas, clientes.
-7. Máquina de estados, cancelación, reprogramación, solicitudes, deadline, expiración.
-8. Notificaciones (cola, email si hay dominio, recordatorios, reintentos).
-9. Gestión guest por token.
-10. Clasificación IA con esquema cerrado.
-11. Auditoría seguridad/RLS + escaneo.
-12. Tests exhaustivos (A–Z, concurrencia, stale, multi-tenant).
-13. Móvil, accesibilidad, rendimiento, SEO.
-14. Admin, observabilidad, preparación producción.
+## 12. Fases
 
-Cada fase se prueba antes de pasar a la siguiente.
+0 Plan · 1 Diseño, home, routing · 2 Backend, auth, esquema, RLS, DEMO · 3 Onboarding, servicios, horario · 4 Disponibilidad · 5 Reserva atómica · 6 Panel y calendario · 7 Estados, cancelar, reprogramar, solicitudes · 8 Notificaciones · 9 Gestión por token · 10 IA · 11 Seguridad · 12 Tests · 13 Móvil/accesibilidad/rendimiento · 14 Admin y producción. Cada fase se prueba antes de seguir.
 
-## Detalles visuales (Fase 1)
+## 13. Riesgos residuales
 
-Mobile-first, aspecto de producto tecnológico: fondo claro cálido, tinta casi negra, acento naranja señal (no morado), tipografía Space Grotesk + DM Sans, CTA sticky en móvil, sin animaciones decorativas.
+1. **Email**: sin dominio de envío verificado no saldrán correos; reservas funcionan y quedan registradas, pero el cliente depende del enlace mostrado en pantalla.
+2. **Cron**: expiración y recordatorios dependen de `pg_cron`; si falla, las lecturas tratan pending vencidas como expiradas, pero los recordatorios se retrasan.
+3. **Lock por taller**: serializa reservas del mismo taller; aceptable con volumen MVP, a revisar con talleres de alto tráfico.
+4. **Pending no bloquea**: dos clientes pueden solicitar la misma hora; se mitiga con `needs_attention`, pero el taller debe actuar.
+5. **Token en URL**: quien tenga el enlace gestiona la cita (riesgo de reenvío/historial); mitigado con caducidad y solo lectura en terminales.
+6. **Sin verificación de email/teléfono** del guest: posibles reservas falsas; sin rate limiting avanzado en MVP (solo límite básico por IP/email en la RPC).
+7. **DST**: horas inexistentes/duplicadas (02:00–03:00) se resuelven con `AT TIME ZONE`; probado, pero talleres no abren a esas horas en la práctica.
+8. **IA**: clasificación puede fallar; siempre cae a `other` y el usuario elige manualmente.
