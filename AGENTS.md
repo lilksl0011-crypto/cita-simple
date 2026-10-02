@@ -8,3 +8,8 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+## Architecture rules
+- Booking integrity lives in PostgreSQL RPCs (advisory lock per workshop + transactional capacity count); UI and server functions never decide availability — prevents double-booking.
+- Service categories are a closed list in src/lib/catalog.ts, shared by UI and AI classification — keeps AI output validatable.
+- All colors/fonts are tokens in src/styles.css; components use semantic classes only — consistent theming.
