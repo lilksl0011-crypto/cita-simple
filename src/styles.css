@@ -33,6 +33,15 @@
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
   --color-ink: var(--ink);
+  --color-primary-hover: var(--primary-hover);
+  --color-navy: var(--navy);
+  --color-navy-hover: var(--navy-hover);
+  --color-navy-foreground: var(--navy-foreground);
+  --color-body: var(--body);
+  --color-subtle: var(--subtle);
+  --color-hairline: var(--hairline);
+  --color-band: var(--band);
+  --color-hover-surface: var(--hover-surface);
   --color-ink-foreground: var(--ink-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
@@ -56,18 +65,27 @@
 :root {
   --radius: 0.875rem;
   /* Warm paper background, near-black ink, signal orange accent */
-  --background: oklch(0.985 0.005 85);
-  --foreground: oklch(0.18 0.01 60);
+  --background: #ffffff;
+  --foreground: #111111;
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.01 60);
+  --card-foreground: #111111;
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.18 0.01 60);
-  --primary: oklch(0.66 0.2 42);
-  --primary-foreground: oklch(0.99 0.005 85);
+  --primary: #f25c05;
+  --primary-hover: #d94e00;
+  --navy: #0f2a4a;
+  --navy-hover: #0a1f38;
+  --navy-foreground: #ffffff;
+  --body: #374151;
+  --subtle: #9ca3af;
+  --hairline: #e5e7eb;
+  --band: #f3f4f6;
+  --hover-surface: #f9fafb;
+  --primary-foreground: #ffffff;
   --secondary: oklch(0.95 0.008 85);
   --secondary-foreground: oklch(0.18 0.01 60);
   --muted: oklch(0.95 0.008 85);
-  --muted-foreground: oklch(0.47 0.012 60);
+  --muted-foreground: #6b7280;
   --accent: oklch(0.95 0.04 55);
   --accent-foreground: oklch(0.38 0.12 42);
   --destructive: oklch(0.56 0.22 27);
@@ -78,9 +96,9 @@
   --warning-foreground: oklch(0.25 0.05 70);
   --ink: oklch(0.18 0.01 60);
   --ink-foreground: oklch(0.98 0.005 85);
-  --border: oklch(0.9 0.008 85);
+  --border: #d1d5db;
   --input: oklch(0.88 0.01 85);
-  --ring: oklch(0.66 0.2 42);
+  --ring: #f25c05;
   --chart-1: oklch(0.66 0.2 42);
   --chart-2: oklch(0.55 0.13 155);
   --chart-3: oklch(0.4 0.02 60);
@@ -124,9 +142,12 @@
 
 @utility container-app {
   width: 100%;
-  max-width: 64rem;
+  max-width: 1100px;
   margin-inline: auto;
-  padding-inline: 1.25rem;
+  padding-inline: 20px;
+  @media (min-width: 640px) {
+    padding-inline: 28px;
+  }
 }
 
 @utility tile {
