@@ -52,7 +52,7 @@ function AuthPage() {
     setError(null);
     setInfo(null);
     const parsed = (mode === "signup" ? signUpSchema : signInSchema).safeParse(form);
-    if (!parsed.success) return setError(parsed.error.issues[0].message);
+    if (!parsed.success) return setError(parsed.error.issues[0]?.message ?? "Revisa los datos");
     setBusy(true);
     if (mode === "signup") {
       const { data, error } = await supabase.auth.signUp({
