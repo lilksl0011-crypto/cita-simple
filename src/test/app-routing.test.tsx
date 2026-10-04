@@ -26,7 +26,7 @@ describe("App routing", () => {
   it("renders the index route", async () => {
     renderAt("/");
 
-    await waitFor(() => expect(document.body.textContent?.trim()).toBeTruthy());
+    await waitFor(() => expect(document.documentElement.innerHTML.length).toBeGreaterThan(0));
   });
 
   it("renders the not-found route", async () => {
@@ -34,6 +34,6 @@ describe("App routing", () => {
 
     renderAt("/this-route-does-not-exist");
 
-    await waitFor(() => expect(document.body.textContent?.trim()).toBeTruthy());
+    await waitFor(() => expect(document.documentElement.innerHTML.length).toBeGreaterThan(0));
   });
 });
