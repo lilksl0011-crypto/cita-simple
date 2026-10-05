@@ -51,7 +51,7 @@ function Choice({ on, title, text, onClick }: { on: boolean; title: string; text
 }
 
 export function ServiceForm({ workshopId, serviceId, initial, onDone, onCancel }: {
-  workshopId: string; serviceId?: string; initial: ServiceDraft; onDone: () => void; onCancel: () => void;
+  workshopId: string; serviceId?: string | undefined; initial: ServiceDraft; onDone: () => void; onCancel: () => void;
 }) {
   const [f, setF] = useState<ServiceDraft>(initial);
   const [custom, setCustom] = useState(!DURATIONS.includes(initial.duration));
