@@ -13,7 +13,10 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ReservarRouteImport } from './routes/reservar'
-import { Route as AuthenticatedPanelRouteImport } from './routes/_authenticated/panel'
+import { Route as TallerSlugRouteImport } from './routes/taller.$slug'
+import { Route as AuthenticatedPanelIndexRouteImport } from './routes/_authenticated/panel.index'
+import { Route as AuthenticatedPanelOnboardingRouteImport } from './routes/_authenticated/panel.onboarding'
+import { Route as AuthenticatedPanelServiciosRouteImport } from './routes/_authenticated/panel.servicios'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -34,23 +37,46 @@ const ReservarRoute = ReservarRouteImport.update({
   path: '/reservar',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedPanelRoute = AuthenticatedPanelRouteImport.update({
-  id: '/panel',
-  path: '/panel',
+const TallerSlugRoute = TallerSlugRouteImport.update({
+  id: '/taller/$slug',
+  path: '/taller/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedPanelIndexRoute = AuthenticatedPanelIndexRouteImport.update({
+  id: '/panel/',
+  path: '/panel/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPanelOnboardingRoute =
+  AuthenticatedPanelOnboardingRouteImport.update({
+    id: '/panel/onboarding',
+    path: '/panel/onboarding',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedPanelServiciosRoute =
+  AuthenticatedPanelServiciosRouteImport.update({
+    id: '/panel/servicios',
+    path: '/panel/servicios',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reservar': typeof ReservarRoute
-  '/panel': typeof AuthenticatedPanelRoute
+  '/taller/$slug': typeof TallerSlugRoute
+  '/panel/onboarding': typeof AuthenticatedPanelOnboardingRoute
+  '/panel/servicios': typeof AuthenticatedPanelServiciosRoute
+  '/panel/': typeof AuthenticatedPanelIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reservar': typeof ReservarRoute
-  '/panel': typeof AuthenticatedPanelRoute
+  '/taller/$slug': typeof TallerSlugRoute
+  '/panel/onboarding': typeof AuthenticatedPanelOnboardingRoute
+  '/panel/servicios': typeof AuthenticatedPanelServiciosRoute
+  '/panel': typeof AuthenticatedPanelIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -58,20 +84,40 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/reservar': typeof ReservarRoute
-  '/_authenticated/panel': typeof AuthenticatedPanelRoute
+  '/taller/$slug': typeof TallerSlugRoute
+  '/_authenticated/panel/onboarding': typeof AuthenticatedPanelOnboardingRoute
+  '/_authenticated/panel/servicios': typeof AuthenticatedPanelServiciosRoute
+  '/_authenticated/panel/': typeof AuthenticatedPanelIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/reservar' | '/panel'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/reservar'
+    | '/taller/$slug'
+    | '/panel/onboarding'
+    | '/panel/servicios'
+    | '/panel/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/reservar' | '/panel'
+  to:
+    | '/'
+    | '/auth'
+    | '/reservar'
+    | '/taller/$slug'
+    | '/panel/onboarding'
+    | '/panel/servicios'
+    | '/panel'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
     | '/reservar'
-    | '/_authenticated/panel'
+    | '/taller/$slug'
+    | '/_authenticated/panel/onboarding'
+    | '/_authenticated/panel/servicios'
+    | '/_authenticated/panel/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -79,6 +125,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ReservarRoute: typeof ReservarRoute
+  TallerSlugRoute: typeof TallerSlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -111,22 +158,47 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReservarRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/panel': {
-      id: '/_authenticated/panel'
+    '/taller/$slug': {
+      id: '/taller/$slug'
+      path: '/taller/$slug'
+      fullPath: '/taller/$slug'
+      preLoaderRoute: typeof TallerSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/panel/': {
+      id: '/_authenticated/panel/'
       path: '/panel'
-      fullPath: '/panel'
-      preLoaderRoute: typeof AuthenticatedPanelRouteImport
+      fullPath: '/panel/'
+      preLoaderRoute: typeof AuthenticatedPanelIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/panel/onboarding': {
+      id: '/_authenticated/panel/onboarding'
+      path: '/panel/onboarding'
+      fullPath: '/panel/onboarding'
+      preLoaderRoute: typeof AuthenticatedPanelOnboardingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/panel/servicios': {
+      id: '/_authenticated/panel/servicios'
+      path: '/panel/servicios'
+      fullPath: '/panel/servicios'
+      preLoaderRoute: typeof AuthenticatedPanelServiciosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedPanelRoute: typeof AuthenticatedPanelRoute
+  AuthenticatedPanelOnboardingRoute: typeof AuthenticatedPanelOnboardingRoute
+  AuthenticatedPanelServiciosRoute: typeof AuthenticatedPanelServiciosRoute
+  AuthenticatedPanelIndexRoute: typeof AuthenticatedPanelIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedPanelRoute: AuthenticatedPanelRoute,
+  AuthenticatedPanelOnboardingRoute: AuthenticatedPanelOnboardingRoute,
+  AuthenticatedPanelServiciosRoute: AuthenticatedPanelServiciosRoute,
+  AuthenticatedPanelIndexRoute: AuthenticatedPanelIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -137,6 +209,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ReservarRoute: ReservarRoute,
+  TallerSlugRoute: TallerSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -8,6 +8,20 @@
       "when": 1791013161250,
       "tag": "0000_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791195756559,
+      "tag": "0001_phase3_onboarding",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791195766949,
+      "tag": "0002_auto_unpublish_when_incomplete",
+      "breakpoints": true
     }
   ]
 }
