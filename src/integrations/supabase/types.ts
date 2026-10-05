@@ -575,7 +575,9 @@ export type Database = {
         Returns: boolean
       }
       owns_workshop: { Args: { _workshop_id: string }; Returns: boolean }
+      save_my_hours: { Args: { _intervals: Json }; Returns: undefined }
       slugify: { Args: { _txt: string }; Returns: string }
+      workshop_ready: { Args: { _wid: string }; Returns: boolean }
     }
     Enums: {
       actor_type: "customer" | "workshop" | "admin" | "system"
