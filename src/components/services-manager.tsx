@@ -16,6 +16,10 @@ export function ServicesManager({ workshopId }: { workshopId: string }) {
 
   async function patch(id: string, row: { active?: boolean; deleted_at?: string }) {
     setErr(null);
+    // Optimistic: reflect the change immediately; the refetch below restores the real state if it failed.
+    await qc.cancelQueries({ queryKey: ["services", workshopId] }); // avoid an older in-flight fetch overwriting this
+    qc.setQueryData(servicesQuery(workshopId).queryKey, (old) =>
+      (old ?? []).flatMap((s) => (s.id !== id ? [s] : row.deleted_at ? [] : [{ ...s, ...row }])));
     const { error } = await supabase.from("services").update(row).eq("id", id);
     if (error) setErr(friendlyDbError(error));
     refresh();
