@@ -22,6 +22,13 @@
       "when": 1791195766949,
       "tag": "0002_auto_unpublish_when_incomplete",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791390372940,
+      "tag": "0003_phase4_availability",
+      "breakpoints": true
     }
   ]
 }

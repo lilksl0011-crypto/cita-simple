@@ -567,12 +567,22 @@ export type Database = {
     Functions: {
       bootstrap_workshop_account: { Args: never; Returns: string }
       can_manage_workshop: { Args: { _workshop_id: string }; Returns: boolean }
+      get_availability: {
+        Args: { _from?: string; _service_id: string; _to?: string }
+        Returns: {
+          start_at: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      is_slot_bookable: {
+        Args: { _exclude_booking?: string; _service_id: string; _start: string }
+        Returns: string
       }
       owns_workshop: { Args: { _workshop_id: string }; Returns: boolean }
       save_my_hours: { Args: { _intervals: Json }; Returns: undefined }
