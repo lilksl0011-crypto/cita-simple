@@ -29,6 +29,13 @@
       "when": 1791390372940,
       "tag": "0003_phase4_availability",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791390442974,
+      "tag": "0004_phase4_isodow_fix",
+      "breakpoints": true
     }
   ]
 }

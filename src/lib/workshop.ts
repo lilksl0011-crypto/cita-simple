@@ -7,7 +7,7 @@ export type Service = Database["public"]["Tables"]["services"]["Row"];
 export type PriceType = Database["public"]["Enums"]["price_type"];
 export type BookingMode = Database["public"]["Enums"]["booking_mode"];
 
-/** Weekday convention matches Postgres extract(dow): 0 = domingo. Displayed Monday first. */
+/** Weekday convention matches Postgres ISO extract(isodow): 7 = domingo. Displayed Monday first. */
 export const WEEKDAYS: { d: number; label: string }[] = [
   { d: 1, label: "Lunes" },
   { d: 2, label: "Martes" },
@@ -15,7 +15,7 @@ export const WEEKDAYS: { d: number; label: string }[] = [
   { d: 4, label: "Jueves" },
   { d: 5, label: "Viernes" },
   { d: 6, label: "Sábado" },
-  { d: 0, label: "Domingo" },
+  { d: 7, label: "Domingo" },
 ];
 
 export const ONBOARDING_STEPS = ["Información", "Horario", "Capacidad", "Servicios", "Listo"] as const;

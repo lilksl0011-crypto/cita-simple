@@ -6,7 +6,7 @@ export type Interval = { opens: string; closes: string };
 export type WeekHours = Record<number, Interval[]>;
 
 export function emptyWeek(): WeekHours {
-  return { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
+  return { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [] };
 }
 
 /** Returns an error message per day (or null). */
