@@ -2,6 +2,7 @@ import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PanelShell } from "@/components/panel-shell";
+import { BlockedTimes } from "@/components/blocked-times";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { STATUS_LABEL, friendlyDbError, myWorkshopQuery, workshopStatus } from "@/lib/workshop";
@@ -56,6 +57,7 @@ function Panel() {
                 <Button asChild size="xl" className="w-full"><Link to="/panel/onboarding">{st === "draft" ? "Empezar configuración" : "Continuar configuración"}</Link></Button>
               </div>
             ) : (
+              <>
               <div className="mt-6 grid gap-3">
                 {st === "ready" && <Button asChild size="xl"><Link to="/taller/$slug" params={{ slug: w.slug }}>Ver mi página</Link></Button>}
                 {st === "inactive" && <Button size="xl" onClick={() => setActive(true)}>Publicar mi página</Button>}
@@ -67,6 +69,8 @@ function Panel() {
                   </button>
                 )}
               </div>
+              <BlockedTimes workshopId={w.id} timezone={w.timezone} />
+              </>
             )}
             {err && <p role="alert" className="mt-3 text-sm text-destructive">{err}</p>}
           </section>
