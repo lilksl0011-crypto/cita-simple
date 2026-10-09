@@ -28,13 +28,13 @@ export const Route = createFileRoute("/taller/$slug")({
   },
   notFoundComponent: () => (
     <div className="min-h-screen"><SiteHeader />
-      <main className="container-app py-12"><h1 className="text-2xl font-semibold">Este taller no está disponible.</h1>
-        <Link to="/" className="mt-4 inline-block underline">Volver al inicio</Link></main></div>
+      <main className="container-app py-12"><h1 className="text-3xl font-medium">Este taller no está disponible.</h1>
+        <Link to="/" className="mt-4 inline-block font-medium text-primary underline underline-offset-4">Volver al inicio</Link></main></div>
   ),
   errorComponent: () => (
     <div className="min-h-screen"><SiteHeader />
-      <main className="container-app py-12"><h1 className="text-2xl font-semibold">No se pudo cargar el taller.</h1>
-        <p className="mt-2 text-body">Inténtalo de nuevo en unos minutos.</p></main></div>
+      <main className="container-app py-12"><h1 className="text-3xl font-medium">No hemos podido cargar el taller.</h1>
+        <p className="mt-2 text-body">Vuelve a intentarlo en unos minutos.</p></main></div>
   ),
   component: TallerPage,
 });
@@ -45,45 +45,45 @@ function TallerPage() {
   return (
     <div className="min-h-screen">
       <SiteHeader />
-      <main className="container-app max-w-2xl py-8 pb-28">
+      <main className="container-app max-w-2xl py-10 pb-28">
         {w.is_demo && <p className="mb-3 inline-block rounded-full bg-band px-3 py-1 text-sm font-medium">Taller de demostración</p>}
-        <h1 className="text-3xl font-semibold leading-tight">{w.name}</h1>
-        {location && <p className="mt-2 flex items-start gap-2 text-body"><MapPin className="mt-0.5 size-5 shrink-0" />{location}</p>}
-        {w.phone && <p className="mt-1 flex items-center gap-2 text-body"><Phone className="size-5" /><a href={`tel:${w.phone.replace(/\s/g, "")}`} className="underline">{w.phone}</a></p>}
-        {w.description && <p className="mt-4 text-body">{w.description}</p>}
+        <h1 className="text-[34px] font-medium leading-tight">{w.name}</h1>
+        {location && <p className="mt-3 flex items-start gap-2 text-body"><MapPin className="mt-0.5 size-5 shrink-0" />{location}</p>}
+        {w.phone && <p className="mt-1 flex items-center gap-2 text-body"><Phone className="size-5" /><a href={`tel:${w.phone.replace(/\s/g, "")}`} className="underline underline-offset-4">{w.phone}</a></p>}
+        {w.description && <p className="mt-4 leading-relaxed text-body">{w.description}</p>}
 
-        <section className="mt-8">
-          <h2 className="text-xl font-semibold">Servicios</h2>
-          <ul className="mt-3 divide-y divide-hairline rounded-xl border border-border">
+        <section className="mt-10">
+          <h2 className="text-2xl font-medium">Servicios</h2>
+          <ul className="shadow-soft mt-3 divide-y divide-hairline rounded-2xl border border-border bg-card">
             {services.map((s) => {
               const Icon = isCategory(s.category) ? CATEGORY_META[s.category].icon : null;
               return (
                 <li key={s.id} className="flex items-start gap-3 p-4">
-                  {Icon && <Icon aria-hidden className="mt-0.5 size-5 shrink-0 text-body" />}
+                  {Icon && <Icon aria-hidden className="mt-0.5 size-5 shrink-0 text-primary" />}
                   <div className="flex-1">
-                    <p className="text-base font-medium">{s.name}</p>
+                    <p className="text-base font-semibold">{s.name}</p>
                     {s.description && <p className="text-sm text-body">{s.description}</p>}
-                    <p className="text-sm text-body">
+                    <p className="text-sm text-muted-foreground">
                       {s.duration_minutes > 0 && `${formatDuration(s.duration_minutes)} · `}
-                      {s.booking_mode === "instant" ? "Reserva inmediata" : "Solicitud — el taller confirma"}
+                      {s.booking_mode === "instant" ? "Reserva al instante" : "Solicitud: el taller confirma"}
                     </p>
                   </div>
-                  <p className="shrink-0 text-[15px] font-medium">{formatPrice(s.price_type, s.price_from)}</p>
+                  <p className="shrink-0 text-[15px] font-semibold">{formatPrice(s.price_type, s.price_from)}</p>
                 </li>
               );
             })}
           </ul>
-          {services.some((s) => s.price_type !== "fixed") && <p className="mt-2 text-sm text-body">Los precios "desde" son orientativos. El precio final lo confirma el taller.</p>}
+          {services.some((s) => s.price_type !== "fixed") && <p className="mt-2 text-sm text-muted-foreground">Los precios "desde" son orientativos. El taller confirma el precio final.</p>}
         </section>
 
-        <section className="mt-8">
-          <h2 className="text-xl font-semibold">Horario</h2>
-          <dl className="mt-3 divide-y divide-hairline rounded-xl border border-border">
+        <section className="mt-10">
+          <h2 className="text-2xl font-medium">Horario</h2>
+          <dl className="shadow-soft mt-3 divide-y divide-hairline rounded-2xl border border-border bg-card">
             {WEEKDAYS.map(({ d, label }) => {
               const list = hours.filter((h) => h.weekday === d);
               return (
                 <div key={d} className="flex justify-between gap-4 px-4 py-3">
-                  <dt className="text-[15px]">{label}</dt>
+                  <dt className="text-[15px] font-medium">{label}</dt>
                   <dd className="text-right text-[15px] text-body">{list.length ? list.map((h) => `${hhmm(h.opens)}–${hhmm(h.closes)}`).join(" · ") : "Cerrado"}</dd>
                 </div>
               );
@@ -91,9 +91,9 @@ function TallerPage() {
           </dl>
         </section>
       </main>
-      <div className="fixed inset-x-0 bottom-0 border-t border-hairline bg-background py-3">
+      <div className="fixed inset-x-0 bottom-0 border-t border-hairline bg-background/95 py-3 shadow-[0_-10px_24px_-14px_rgb(31_29_26/0.18)] backdrop-blur">
         <div className="container-app max-w-2xl">
-          <Button asChild size="xl" className="w-full"><Link to="/reservar">Reservar cita</Link></Button>
+          <Button asChild size="xl" className="shadow-cta w-full"><Link to="/reservar">Reservar cita</Link></Button>
         </div>
       </div>
     </div>
