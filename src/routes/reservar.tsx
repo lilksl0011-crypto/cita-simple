@@ -29,9 +29,9 @@ function Reservar() {
     <div className="min-h-screen">
       <SiteHeader />
       <main className="container-app py-8">
-        <p className="text-sm font-medium text-muted-foreground">Paso 1 de 5</p>
-        <h1 className="mt-1 text-[30px] font-medium leading-tight">¿Qué servicio necesitas?</h1>
-        <div role="radiogroup" aria-label="Servicio" className="mt-5 flex flex-wrap gap-2">
+        <p className="animate-fade-up text-sm font-medium text-muted-foreground">Paso 1 de 5</p>
+        <h1 className="animate-fade-up mt-1 text-[30px] font-medium leading-tight">¿Qué servicio necesitas?</h1>
+        <div role="radiogroup" aria-label="Servicio" className="animate-fade-up mt-5 flex flex-wrap gap-2" style={{ animationDelay: "160ms" }}>
           {SERVICE_CATEGORIES.map((c) => (
             <Link
               key={c}
@@ -51,7 +51,7 @@ function Reservar() {
           ))}
         </div>
 
-        <section className="mt-10" aria-live="polite">
+        <section className="animate-fade-up mt-10" aria-live="polite" style={{ animationDelay: "280ms" }}>
           <h2 className="text-xl font-medium">Talleres</h2>
           <div className="tile mt-3 p-8 text-center">
             <p className="font-medium">Muy pronto verás aquí talleres con horas libres.</p>
