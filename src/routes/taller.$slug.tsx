@@ -47,12 +47,12 @@ function TallerPage() {
       <SiteHeader />
       <main className="container-app max-w-2xl py-10 pb-28">
         {w.is_demo && <p className="mb-3 inline-block rounded-full bg-band px-3 py-1 text-sm font-medium">Taller de demostración</p>}
-        <h1 className="text-[34px] font-medium leading-tight">{w.name}</h1>
+        <h1 className="animate-fade-up text-[34px] font-medium leading-tight">{w.name}</h1>
         {location && <p className="mt-3 flex items-start gap-2 text-body"><MapPin className="mt-0.5 size-5 shrink-0" />{location}</p>}
         {w.phone && <p className="mt-1 flex items-center gap-2 text-body"><Phone className="size-5" /><a href={`tel:${w.phone.replace(/\s/g, "")}`} className="underline underline-offset-4">{w.phone}</a></p>}
         {w.description && <p className="mt-4 leading-relaxed text-body">{w.description}</p>}
 
-        <section className="mt-10">
+        <section className="animate-fade-up mt-10" style={{ animationDelay: "150ms" }}>
           <h2 className="text-2xl font-medium">Servicios</h2>
           <ul className="shadow-soft mt-3 divide-y divide-hairline rounded-2xl border border-border bg-card">
             {services.map((s) => {
@@ -76,7 +76,7 @@ function TallerPage() {
           {services.some((s) => s.price_type !== "fixed") && <p className="mt-2 text-sm text-muted-foreground">Los precios "desde" son orientativos. El taller confirma el precio final.</p>}
         </section>
 
-        <section className="mt-10">
+        <section className="animate-fade-up mt-10" style={{ animationDelay: "280ms" }}>
           <h2 className="text-2xl font-medium">Horario</h2>
           <dl className="shadow-soft mt-3 divide-y divide-hairline rounded-2xl border border-border bg-card">
             {WEEKDAYS.map(({ d, label }) => {
