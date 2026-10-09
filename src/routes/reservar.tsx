@@ -28,10 +28,10 @@ function Reservar() {
   return (
     <div className="min-h-screen">
       <SiteHeader />
-      <main className="container-app py-6">
+      <main className="container-app py-8">
         <p className="text-sm font-medium text-muted-foreground">Paso 1 de 5</p>
-        <h1 className="mt-1 text-2xl font-bold">Elige el servicio</h1>
-        <div role="radiogroup" aria-label="Servicio" className="mt-4 flex flex-wrap gap-2">
+        <h1 className="mt-1 text-[30px] font-medium leading-tight">¿Qué servicio necesitas?</h1>
+        <div role="radiogroup" aria-label="Servicio" className="mt-5 flex flex-wrap gap-2">
           {SERVICE_CATEGORIES.map((c) => (
             <Link
               key={c}
@@ -41,7 +41,9 @@ function Reservar() {
               aria-checked={servicio === c}
               className={cn(
                 "rounded-full border px-4 py-2.5 text-sm font-medium transition-colors",
-                servicio === c ? "border-primary bg-primary text-primary-foreground" : "bg-card hover:border-primary",
+                servicio === c
+                  ? "border-primary bg-primary text-primary-foreground shadow-cta"
+                  : "bg-card shadow-soft hover:border-primary",
               )}
             >
               {CATEGORY_META[c].label}
@@ -49,11 +51,11 @@ function Reservar() {
           ))}
         </div>
 
-        <section className="mt-8" aria-live="polite">
-          <h2 className="text-lg font-semibold">Talleres</h2>
-          <div className="tile mt-3 p-6 text-center">
-            <p className="font-medium">Los talleres aparecerán aquí muy pronto.</p>
-            <p className="mt-1 text-sm text-muted-foreground">Estamos preparando la disponibilidad en tiempo real.</p>
+        <section className="mt-10" aria-live="polite">
+          <h2 className="text-xl font-medium">Talleres</h2>
+          <div className="tile mt-3 p-8 text-center">
+            <p className="font-medium">Muy pronto verás aquí talleres con horas libres.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Estamos preparando las horas disponibles.</p>
           </div>
         </section>
       </main>
