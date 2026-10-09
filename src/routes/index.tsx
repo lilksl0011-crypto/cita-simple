@@ -29,15 +29,15 @@ function Home() {
     <div className="min-h-screen">
       <SiteHeader />
       <main>
-        <section className="container-app pt-12 sm:pt-16">
-          <h1 className="text-[32px] font-semibold leading-[1.1] tracking-[-0.5px] text-foreground sm:text-[44px]">
+        <section className="container-app pt-14 sm:pt-20">
+          <h1 className="text-[34px] font-medium leading-[1.08] tracking-[-0.02em] text-foreground sm:text-[52px]">
             Tu cita. Sin llamadas.
           </h1>
-          <p className="mt-3 max-w-md text-lg leading-normal text-body">
-            Reserva en un taller de forma rápida y sencilla.
+          <p className="mt-4 max-w-md text-lg leading-relaxed text-body">
+            Elige servicio, día y hora en tu taller.
           </p>
 
-          <div role="tablist" aria-label="Tipo de servicio" className="mt-6 grid grid-cols-2">
+          <div role="tablist" aria-label="Tipo de servicio" className="mt-8 grid grid-cols-2">
             {([
               { id: "taller", label: "Taller", icon: Wrench },
               { id: "desguace", label: "Desguace", icon: Car },
@@ -69,7 +69,7 @@ function Home() {
 
           {navy ? (
             <form className="mt-6 flex flex-col gap-3 sm:flex-row" onSubmit={(e) => e.preventDefault()}>
-              <label className="flex h-[52px] flex-1 overflow-hidden rounded-[10px] border-[1.5px] border-navy">
+              <label className="flex h-[52px] flex-1 overflow-hidden rounded-xl border-[1.5px] border-navy shadow-soft">
                 <span aria-hidden className="grid w-[34px] place-items-center bg-navy text-sm font-semibold text-navy-foreground">E</span>
                 <span className="sr-only">Matrícula</span>
                 <input
@@ -79,7 +79,7 @@ function Home() {
               </label>
               <button
                 type="submit"
-                className="inline-flex h-[52px] items-center justify-center gap-2 rounded-[10px] bg-navy px-6 text-base font-medium text-navy-foreground transition-colors duration-150 hover:bg-navy-hover"
+                className="inline-flex h-[52px] items-center justify-center gap-2 rounded-xl bg-navy px-6 text-base font-medium text-navy-foreground transition-colors duration-150 hover:bg-navy-hover"
               >
                 Buscar <ArrowRight className="size-[18px]" aria-hidden />
               </button>
@@ -87,16 +87,16 @@ function Home() {
           ) : (
             <Link
               to="/reservar"
-              className="mt-6 inline-flex h-[52px] w-full items-center justify-center gap-2 rounded-[10px] bg-primary px-6 text-base font-medium text-primary-foreground transition-colors duration-150 hover:bg-primary-hover active:brightness-90 sm:w-auto"
+              className="mt-6 inline-flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 text-base font-semibold text-primary-foreground shadow-cta transition-colors duration-150 hover:bg-primary-hover active:brightness-90 sm:w-auto"
             >
               Reservar cita <ArrowRight className="size-[18px]" aria-hidden />
             </Link>
           )}
         </section>
 
-        <section className="container-app pt-6 pb-8" aria-labelledby="servicios">
-          <h2 id="servicios" className="mb-3 font-sans text-sm font-medium tracking-normal text-body">
-            ¿Qué necesitas?
+        <section className="container-app pt-8 pb-10" aria-labelledby="servicios">
+          <h2 id="servicios" className="mb-4 font-sans text-sm font-semibold tracking-normal text-body">
+            ¿Qué necesita tu coche?
           </h2>
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {SERVICE_CATEGORIES.map((c) => {
@@ -107,7 +107,7 @@ function Home() {
                     to="/reservar"
                     search={{ servicio: c }}
                     className={cn(
-                      "group flex min-h-[92px] flex-col justify-between rounded-xl border border-border bg-background p-3.5 transition-colors duration-150",
+                      "group flex min-h-[96px] flex-col justify-between rounded-2xl border border-border bg-background p-4 shadow-soft transition-all duration-150 hover:shadow-lift",
                       navy ? "hover:border-navy" : "hover:border-primary",
                     )}
                   >
@@ -123,7 +123,7 @@ function Home() {
                       <ChevronRight className="size-[18px] text-subtle" aria-hidden />
                     </span>
                     <span className="text-base font-medium text-foreground">
-                      {c === "other" ? "Otro problema" : label}
+                      {c === "other" ? "Otra consulta" : label}
                     </span>
                   </Link>
                 </li>
@@ -132,17 +132,17 @@ function Home() {
           </ul>
         </section>
 
-        <section className="bg-band">
-          <div className="container-app grid gap-5 py-5 sm:grid-cols-3">
+        <section className="border-y border-hairline bg-band">
+          <div className="container-app grid gap-6 py-6 sm:grid-cols-3">
             {[
-              { icon: Clock, t: "Horas reales", d: "Solo ves horas que el taller tiene libres." },
-              { icon: Smartphone, t: "Sin cuenta", d: "Reserva con tu nombre, email y teléfono." },
-              { icon: ShieldCheck, t: "Precio claro", d: "Fijo, orientativo o a confirmar. Sin sorpresas." },
+              { icon: Clock, t: "Horas reales", d: "Solo ves huecos libres del taller." },
+              { icon: Smartphone, t: "Sin cuenta", d: "Solo nombre, email y teléfono." },
+              { icon: ShieldCheck, t: "Precio claro", d: "Fijo, orientativo o a confirmar. Lo ves antes de reservar." },
             ].map(({ icon: Icon, t, d }) => (
               <div key={t} className="flex gap-3">
-                <Icon className="size-[22px] shrink-0 text-body" aria-hidden />
+                <Icon className="size-[22px] shrink-0 text-primary" aria-hidden />
                 <div>
-                  <p className="text-[15px] font-medium text-foreground">{t}</p>
+                  <p className="text-[15px] font-semibold text-foreground">{t}</p>
                   <p className="text-sm text-body">{d}</p>
                 </div>
               </div>
@@ -150,9 +150,9 @@ function Home() {
           </div>
         </section>
       </main>
-      <footer className="container-app flex flex-wrap items-center justify-between gap-2 py-6 text-sm text-body">
+      <footer className="container-app flex flex-wrap items-center justify-between gap-2 py-8 text-sm text-body">
         <span>© CitaMotor</span>
-        <Link to="/auth" className="hover:text-foreground">Menos llamadas. Más control. — Para talleres</Link>
+        <Link to="/auth" className="font-medium hover:text-foreground">¿Tienes un taller? Gestiona tus citas</Link>
       </footer>
     </div>
   );
