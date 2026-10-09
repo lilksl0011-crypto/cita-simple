@@ -30,14 +30,14 @@ function Home() {
       <SiteHeader />
       <main>
         <section className="container-app pt-14 sm:pt-20">
-          <h1 className="text-[34px] font-medium leading-[1.08] tracking-[-0.02em] text-foreground sm:text-[52px]">
+          <h1 className="animate-fade-up text-[34px] font-medium leading-[1.08] tracking-[-0.02em] text-foreground sm:text-[52px]">
             Tu cita. Sin llamadas.
           </h1>
-          <p className="mt-4 max-w-md text-lg leading-relaxed text-body">
+          <p className="animate-fade-up mt-4 max-w-md text-lg leading-relaxed text-body" style={{ animationDelay: "120ms" }}>
             Elige servicio, día y hora en tu taller.
           </p>
 
-          <div role="tablist" aria-label="Tipo de servicio" className="mt-8 grid grid-cols-2">
+          <div role="tablist" aria-label="Tipo de servicio" className="animate-fade-up mt-8 grid grid-cols-2" style={{ animationDelay: "240ms" }}>
             {([
               { id: "taller", label: "Taller", icon: Wrench },
               { id: "desguace", label: "Desguace", icon: Car },
@@ -68,7 +68,7 @@ function Home() {
           </div>
 
           {navy ? (
-            <form className="mt-6 flex flex-col gap-3 sm:flex-row" onSubmit={(e) => e.preventDefault()}>
+            <form className="animate-fade-up mt-6 flex flex-col gap-3 sm:flex-row" style={{ animationDelay: "360ms" }} onSubmit={(e) => e.preventDefault()}>
               <label className="flex h-[52px] flex-1 overflow-hidden rounded-xl border-[1.5px] border-navy shadow-soft">
                 <span aria-hidden className="grid w-[34px] place-items-center bg-navy text-sm font-semibold text-navy-foreground">E</span>
                 <span className="sr-only">Matrícula</span>
@@ -87,7 +87,8 @@ function Home() {
           ) : (
             <Link
               to="/reservar"
-              className="mt-6 inline-flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 text-base font-semibold text-primary-foreground shadow-cta transition-colors duration-150 hover:bg-primary-hover active:brightness-90 sm:w-auto"
+              style={{ animationDelay: "360ms" }}
+              className="animate-fade-up mt-6 inline-flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 text-base font-semibold text-primary-foreground shadow-cta transition-colors duration-150 hover:bg-primary-hover active:brightness-90 sm:w-auto"
             >
               Reservar cita <ArrowRight className="size-[18px]" aria-hidden />
             </Link>
@@ -95,14 +96,14 @@ function Home() {
         </section>
 
         <section className="container-app pt-8 pb-10" aria-labelledby="servicios">
-          <h2 id="servicios" className="mb-4 font-sans text-sm font-semibold tracking-normal text-body">
+          <h2 id="servicios" style={{ animationDelay: "440ms" }} className="animate-fade-up mb-4 font-sans text-sm font-semibold tracking-normal text-body">
             ¿Qué necesita tu coche?
           </h2>
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {SERVICE_CATEGORIES.map((c) => {
+            {SERVICE_CATEGORIES.map((c, i) => {
               const { label, icon: Icon } = CATEGORY_META[c];
               return (
-                <li key={c}>
+                <li key={c} className="animate-fade-up" style={{ animationDelay: `${480 + i * 50}ms` }}>
                   <Link
                     to="/reservar"
                     search={{ servicio: c }}
@@ -138,8 +139,8 @@ function Home() {
               { icon: Clock, t: "Horas reales", d: "Solo ves huecos libres del taller." },
               { icon: Smartphone, t: "Sin cuenta", d: "Solo nombre, email y teléfono." },
               { icon: ShieldCheck, t: "Precio claro", d: "Fijo, orientativo o a confirmar. Lo ves antes de reservar." },
-            ].map(({ icon: Icon, t, d }) => (
-              <div key={t} className="flex gap-3">
+            ].map(({ icon: Icon, t, d }, i) => (
+              <div key={t} className="animate-fade-up flex gap-3" style={{ animationDelay: `${700 + i * 100}ms` }}>
                 <Icon className="size-[22px] shrink-0 text-primary" aria-hidden />
                 <div>
                   <p className="text-[15px] font-semibold text-foreground">{t}</p>
